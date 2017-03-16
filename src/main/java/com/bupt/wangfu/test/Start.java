@@ -154,6 +154,11 @@ public class Start {
                     }
 
                 }
+
+
+
+
+
                 flow.setBytes(flow.getBytes()-byteList.get(portId));
                 flowInfo.add(flow);
             }
