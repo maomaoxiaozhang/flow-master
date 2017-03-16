@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?><WsnPolicyMsgs>
+  <policyMsg targetTopic="all:C:用户:HanB">
+    <array as="targetGroups">
+      <TargetGroup allMsg="true" name="G1"/>
+    </array>
+  </policyMsg>
+<policyMsg targetTopic="all:E">
+    <array as="targetGroups">
+      <TargetGroup allMsg="true" name="G1"/>
+    </array>
+  </policyMsg>
+</WsnPolicyMsgs>

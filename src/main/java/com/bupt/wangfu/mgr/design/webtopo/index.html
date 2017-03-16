@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<!--suppress ALL -->
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>HTML5制作动态集群拓扑结构图</title>
+	<script src="js/esl.js"></script>
+    <style> 
+        .black_overlay{ 
+            display: none; position: absolute; 
+            top: 0; left: 0; width: 100%;  height: 100%; 
+            background-color: black;  z-index:1001;  -moz-opacity: 0.8; 
+            opacity:.80; filter: alpha(opacity=88); 
+        } 
+        .white_content { 
+            display: block; position: absolute; 
+            top: 32px; left: 30px; width: 550px; height: 460px;
+            background-color: white; z-index:1002; overflow: auto;
+        }
+    </style> 
+</head>
+<body>
+
+<div id="demo1" style="width: 610px; height:525px;"></div>
+<div id="light" class="white_content"></div>
+<div id="fade" class="black_overlay" onclick="document.getElementById('light').style.display='none';
+        document.getElementById('fade').style.display='none'"></div>
+
+<script type="text/javascript">
+	var myChart;
+    var subChart;
+	require.config ( {
+        packages:[
+            { name:'echarts', location:'./echarts/src', main:'echarts' },
+            { name:'zrender', location:'./zrender/src', main:'zrender' } ]
+    });
+    var option = {
+        title : { text: '集群拓扑', x:'right', y:'bottom' },
+        tooltip : { trigger: 'item', formatter: '{a} : {b}' },
+        legend: { x: 'left', selected:{'集群':true}, data:['集群'] },
+        toolbox : {
+            show : true,
+            feature : { mark : { show : true }, restore : { show : true }, saveAsImage : { show : true} }
+        },
+        isShowScrollBar:true,
+        series: [{
+            type:'kforce',
+            categories : [ { name: '集群', itemStyle: { normal: { color : '#ff7f50' } } } ],
+            itemStyle: { normal: { label: { show: true, textStyle: { color: '#000000' } },
+                nodeStyle : { brushType : 'both', strokeColor : 'rgba(255,215,0,0.4)', lineWidth : 2 } },
+                emphasis : { linkStyle : { strokeColor : '#5182AB'} } },
+            minRadius : 15, maxRadius : 25, density : 0.8, attractiveness: 1, roam: true, nodes:[], links:[]
+        }]
+    };
+
+    var newoption = {
+        title : { text: '集群拓扑', x:'right', y:'bottom' },
+        tooltip : { trigger: 'item', formatter: '{a} : {b}' },
+        legend: { x: 'left', selected:{'集群':true}, data:['集群'] },
+        toolbox : {
+            show : true,
+            feature : {  mark : { show : true }, restore : { show : true }, saveAsImage : { show : true} }
+        }, isShowScrollBar:true,
+        series: [{
+            type:'kforce',
+            categories : [{ name: '集群', itemStyle: { normal: { color : '#ff7f50' } } } ],
+            itemStyle: { normal: { label: { show: true, textStyle: { color: '#000000' } },
+                nodeStyle : { brushType : 'both', strokeColor : 'rgba(255,215,0,0.4)', lineWidth : 2 } },
+                emphasis:{ linkStyle : { strokeColor : '#5182AB'} } },
+            minRadius : 15, maxRadius : 25, density : 0.8, attractiveness: 1, nodes:[], links:[]
+        }]
+    };
+
+    var suboption = {
+        title : { text: '群内拓扑', subtext: '数据来自OpenDayLight', x:'right', y:'bottom' },
+        tooltip : { trigger: 'item', formatter: '{a} : {b}' },
+        legend: { x: 'left', selected:{'交换机':true,'主机':true}, data:['交换机','主机'] },
+        toolbox : { 
+            show : true, feature : { mark : { show : true }, update : { show : true }, saveAsImage : { show : true }}
+        }, isShowScrollBar:false,
+        series: [{
+            type:'kforce', 
+            categories : [{ name: '交换机', itemStyle: { normal: { color : '#ff7f50' } } },
+                { name:'主机', itemStyle: { normal: { color : '#87cdfa' } } } ],
+            itemStyle: { normal: { label: { show: true, textStyle: { color: '#000000' } } },
+                emphasis:{ linkStyle : { strokeColor : '#5182AB'} } },
+            minRadius : 15, maxRadius : 25, density : 0.8, attractiveness: 1.2,
+            nodes:[{category:0, name: '',value : 3}], links:[] }
+    ]};
+
+    require(
+        [ 'echarts', 'echarts/chart/kforce' ],
+        function(ec) {
+            myChart = ec.init(document.getElementById('demo1'));
+            subChart = ec.init(document.getElementById('light'));
+            document.getElementById('light').style.display='none';
+        }
+    )
+
+    var groups = [];
+    var links = [];
+    var subNodes = [];
+    var subLinks = [];
+
+    function getTopos(func) {
+        var xhr = null;
+        if(window.XMLHttpRequest){
+            xhr = new XMLHttpRequest();
+        }else{
+            xhr = new ActiveXObject('Microsoft.XMLHttp');
+        }
+        var wsUrl = 'http://localhost:1234/TopoService';
+        var soap= '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:q0="http://admin.mgr.wangfu.bupt.com/" >'
+            +'<soapenv:Body><q0:'+func+'></q0:'+func+'></soapenv:Body></soapenv:Envelope>';
+
+        xhr.open('POST',wsUrl,true);
+        xhr.setRequestHeader("Content-Type", "text/xml;charset=UTF-8");
+        xhr.onreadystatechange = function() {
+            if(xhr.readyState == 4){
+                if(xhr.status == 200){
+                    var ret = xhr.responseXML;
+                    var msg = ret.getElementsByTagName('return');
+                    
+                    if (func == 'getGroups') {
+                        for (var i = 0; i < msg.length; i++) {
+                            groups[i] = [];
+                            var name = msg[i].getElementsByTagName('name')[0].textContent;
+                            var controllerAddr = msg[i].getElementsByTagName('controllerAddr')[0].textContent;
+                            groups[i][0] = name;
+                            groups[i][1] = controllerAddr;
+                        }
+                    }else {
+                        for (var i = 0; i < msg.length; i++) {
+                            links[i] = [];
+                            var src = msg[i].getElementsByTagName('srcGroup')[0].textContent;
+                            var tar = msg[i].getElementsByTagName('tarGroup')[0].textContent;
+                            links[i][0] = src;
+                            links[i][1] = tar;
+                        }
+                    }
+                }
+            }
+        };
+        xhr.send(soap);
+    }
+
+    function addTopos() {
+        // 添加集群信息
+        for (var i = 0; i < groups.length; i++) {
+            option.series[0].nodes[i] = {
+                category:0, name: groups[i][0], value : 8,shapeType:'rectangle',
+                onclick:function () {
+                    updateSubTopos(groups[i][1]);
+                },
+                itemStyle:{ normal:{ width:80, height:60 } }
+            };
+        }
+
+        // 添加連接信息
+        for (var i = 0; i < links.length; i ++) {
+            var src_node;
+            var tar_node;
+            for (var j = 0; j < option.series[0].nodes.length; j ++) {
+                if (option.series[0].nodes[j].name == links[i][0]) {
+                    src_node = j;
+                }if (option.series[0].nodes[j].name == links[i][1]) {
+                    tar_node = j;
+                }
+            }
+            option.series[0].links[i] = {
+                source : src_node, target : tar_node,
+                itemStyle:{ normal:{ lineWidth : 5 } }
+            };
+        }
+        myChart.setOption(option);
+    }
+
+    function getSubTopos(ctrlAddr) {
+        if (subNodes != null)
+            subNodes = [];
+        if (subLinks != null)
+            subLinks = [];
+        
+        var xhr = null;
+        if(window.XMLHttpRequest){
+            xhr = new XMLHttpRequest();
+        }else{
+            xhr = new ActiveXObject('Microsoft.XMLHttp');
+        }
+        var url = ctrlAddr + '/restconf/operational/network-topology:network-topology/';
+        xhr.open('GET',url,true,'admin','admin');
+        xhr.setRequestHeader("Content-Type", "text/xml;charset=UTF-8");
+        xhr.onreadystatechange = function() {
+            if(xhr.readyState == 4){
+                if(xhr.status == 200){
+                    var topo = xhr.responseText.toString().replace(/-/g, "_");
+                    topo = eval("(" + topo + ")");
+                    for (var i = 0; i < topo.network_topology.topology[0].node.length; i++) {
+                        subNodes[i] = topo.network_topology.topology[0].node[i].node_id;
+                    }
+                    for (var i = 0; i < topo.network_topology.topology[0].link.length; i++) {
+                        subLinks[i] = [];
+                        subLinks[i][0] = topo.network_topology.topology[0].link[i].source.source_node;
+                        subLinks[i][1] = topo.network_topology.topology[0].link[i].destination.dest_node;
+                    }
+                }
+            }
+        };
+        xhr.send();
+    }
+
+    function addSubTopos(subNodes, subLinks) {
+        document.getElementById('light').style.display='block';
+        document.getElementById('fade').style.display='block';
+        subLinks = excludeRepeat(subLinks);
+        for (var i = 0; i < subNodes.length; i++) {
+            if (subNodes[i].indexOf('openflow') == 0) {
+                suboption.series[0].nodes[i] = {
+                    category:0, name: subNodes[i], shapeType:'ellipse',
+                    onclick:function(params) {
+                        alert(params.target.style.text);
+                    },
+                    itemStyle:{ normal:{ a:80, b:15 } }
+                };     
+            }else {
+                suboption.series[0].nodes[i] = {
+                    category:1, name: subNodes[i], shapeType:'rectangle',
+                    onclick:function(params) {
+                        alert(params.target.style.text);
+                    },
+                    itemStyle:{ normal:{ width:150, height:25 } }
+                };     
+            }
+        }
+
+        for (var i = 0; i < subLinks.length; i++) {
+            var src_node;
+            var tar_node;
+            for (var j = 0; j < suboption.series[0].nodes.length; j++) {
+                if (subLinks[i][0] == suboption.series[0].nodes[j].name)
+                    src_node = j;
+                if (subLinks[i][1] == suboption.series[0].nodes[j].name)
+                    tar_node = j;
+            }
+            suboption.series[0].links[i] = {
+                source : src_node, target : tar_node,
+                itemStyle : { normal : { lineWidth : 3 } }
+            };
+        }
+        subChart.clear();
+        subChart.setOption(suboption);
+    }
+
+
+    function excludeRepeat(subLinks) {
+
+        var temp = [];
+        temp[0] = subLinks[0];
+        var index = 1;
+        for (var i = 1; i < subLinks.length; i++) {
+            var t = subLinks[i];
+            var flag = false;
+            for (var j = 0; j < temp.length; j++) {
+                if ((temp[j][0] == t[0] && temp[j][1] == t[1]) || 
+                        (temp[j][0] == t[1] && temp[j][1] == t[0])) {
+                    flag = true;
+                    break;
+                }
+            }
+            if (!flag)
+                temp[index ++] = t;
+        }
+        return temp;
+    }
+
+    function sleep(numberMillis) { 
+        var now = new Date(); 
+        var exitTime = now.getTime() + numberMillis; 
+        while (true) { 
+            now = new Date();
+            if (now.getTime() > exitTime) 
+                return;
+        } 
+    }
+
+    function initSwheel(divName,chartName,optionName) {
+        var oDiv = document.getElementById(divName);     
+        function onMouseWheel(ev) {
+            var ev = ev || window.event;
+            var down = true; // 定义一个标志，当滚轮向下滚时，执行一些操作
+            down = ev.wheelDelta ? ev.wheelDelta < 0 : ev.detail > 0;
+            if (down) { // 滚轮下滚
+
+                if (optionName.series[0].nodes[0].itemStyle.normal.width > 20) {
+                    for (var i = 0; i < optionName.series[0].links.length; i++) {
+                        optionName.series[0].links[i].itemStyle.normal.lineWidth /= 2;
+                    }
+                    for (var i = 0; i < optionName.series[0].nodes.length; i++) {
+                        optionName.series[0].nodes[i].itemStyle.normal.width /= 2;
+                        optionName.series[0].nodes[i].itemStyle.normal.height /= 2;
+                    }
+                    optionName.series[0].attractiveness *= 2.5;
+                    chartName.clear();
+                    chartName.setOption(optionName);
+
+                }else {
+
+                    
+                    newoption.series[0].nodes[0] = {
+                        category:0, name: 'G1 G2 G3', value : 8,shapeType:'rectangle',
+                        onclick:function () {
+                            alert('G1 G2 G3');
+                        },
+                        itemStyle:{ normal:{ width:40, height:30 } }
+                    };
+                    newoption.series[0].nodes[1] = {
+                        category:0, name: 'G4 G5 G6', value : 8,shapeType:'rectangle',
+                        onclick:function () {
+                            alert('G4 G5 G6');
+                        },
+                        itemStyle:{ normal:{ width:40, height:30 } }
+                    };
+
+                    newoption.series[0].links[0] = {
+                        source : 0, target : 1, weight : 6,
+                        itemStyle:{ normal:{ lineWidth:2.5 } }
+                    };
+
+                    newoption.series[0].attractiveness = 2;
+                    chartName.clear();
+                    chartName.setOption(newoption,true);
+                }
+
+            }else { // 滚轮上滚
+                if (optionName.series[0].nodes[0].itemStyle.normal.width < 160) {
+                    for (var i = 0; i < optionName.series[0].links.length; i++) {
+                        optionName.series[0].links[i].itemStyle.normal.lineWidth *= 2;
+                    }
+                    for (var i = 0; i < optionName.series[0].nodes.length; i++) {
+                        optionName.series[0].nodes[i].itemStyle.normal.width *= 2;
+                        optionName.series[0].nodes[i].itemStyle.normal.height *= 2;
+                    }
+                    optionName.series[0].attractiveness /= 2.5;
+                    chartName.clear();
+                    chartName.setOption(optionName);
+                }
+            }
+            if(ev.preventDefault){
+                ev.preventDefault();// 阻止默认事件
+            }
+            return false;
+        }
+        addEvent(oDiv,'mousewheel',onMouseWheel);
+        addEvent(oDiv,'DOMMouseScroll',onMouseWheel);
+    }
+    function addEvent(obj,xEvent,fn) {
+        if(obj.attachEvent){
+            obj.attachEvent('on'+xEvent,fn);
+        }else{
+            obj.addEventListener(xEvent,fn,false);
+        }
+    }
+
+    function update() {
+        getTopos('getGroups');
+        setTimeout("getTopos('getLinks')",20);
+        setTimeout("addTopos()",20);
+    }
+
+    function updateSubTopos(param) {
+        getSubTopos(param);
+        setTimeout('addSubTopos(subNodes,subLinks)',20);
+        subChart.setOption(suboption);
+    }
+
+    function init() {
+        update();
+        setTimeout("update()",50);
+        setTimeout("initSwheel('demo1',myChart,option)",50);
+        //setTimeout("initSwheel('light',subChart,suboption)",50);
+    }
+
+    window.onload = function() {
+        init();
+    };
+
+</script>
+</body>
+</html>
