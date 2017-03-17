@@ -152,13 +152,7 @@ public class Start {
                         packetList.put(portId,flow.getPackets());
                         lossList.put(portId,flow.getDrop());
                     }
-
                 }
-
-
-
-
-
                 flow.setBytes(flow.getBytes()-byteList.get(portId));
                 flowInfo.add(flow);
             }
