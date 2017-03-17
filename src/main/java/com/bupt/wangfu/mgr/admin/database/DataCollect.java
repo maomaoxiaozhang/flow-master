@@ -1,11 +1,6 @@
 package com.bupt.wangfu.mgr.admin.database;
 
-import com.bupt.wangfu.info.entry.FlowInfo;
-import com.bupt.wangfu.info.entry.Link;
-import com.bupt.wangfu.info.entry.Port;
-import com.bupt.wangfu.info.entry.Switch;
 import com.bupt.wangfu.info.entry.*;
-import com.bupt.wangfu.mgr.admin.database.DBConnector;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -240,6 +235,106 @@ public class DataCollect {
 
     public static void deleteFlowInfo(int flowInfoId) {
         String sql = "DELETE from flowInfo where flowInfoId = " + flowInfoId;
+        DBConnector connector = new DBConnector(sql);
+        try {
+            connector.pst.execute(sql);
+        }catch (Exception e ) {
+            e.printStackTrace();
+        }finally {
+            connector.close();
+        }
+    }
+
+    //创建表avgSpdByPort，表项为次数、控制器、交换机、端口号、速率；主键为次数、控制器、交换机、端口号
+    public static void createAvgSpdByPort(){
+        String sql = "create table avgSpdByPort(times int, controllerId varchar(20), switchId varchar(20), " +
+                "portId varchar(20), speed int, primary key(times, controllerId, switchId, portId))";
+        DBConnector connector = new DBConnector(sql);
+        try {
+            connector.pst.execute(sql);
+        }catch (Exception e ) {
+            e.printStackTrace();
+        }finally {
+            connector.close();
+        }
+    }
+
+    //根据次数、控制器、交换机、端口号存储某一时间内的平均速率
+    public static void insertAvgSpdByPort(int times, String controllerId, String switchId, String portId, Long speed){
+        String sql = "insert into avgSpdByPort values('" + times + "','" + controllerId + "','" + switchId + "','" +
+                portId + "','" + speed + "')";
+        DBConnector connector = new DBConnector(sql);
+        try {
+            connector.pst.execute(sql);
+        }catch (Exception e ) {
+            e.printStackTrace();
+        }finally {
+            connector.close();
+        }
+    }
+
+    //从avgSpdByPort表中根据次数、控制器、交换机、端口号取出某一时间段的平均速率
+    public static ResultSet selectAvgSpdByPort(int times, String controllerId, String switchId, String portId){
+        String sql = "select speed from avgSpdByPort where times = " + times + " and controllerId = " + "'" +
+                controllerId + "'" + " and switchId = " + "'"+ switchId + "'" + " and portId = " + "'" + portId + "'";
+//        System.out.println(sql);
+        DBConnector connector = new DBConnector(sql);
+        ResultSet resultSet = null;
+        try {
+            resultSet = connector.pst.executeQuery(sql);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return resultSet;
+    }
+
+    //创建表sumByPort（本表在每次刷新时需要重置），表项为控制器、交换机、端口号、流量总量，将控制器、交换机、端口号设置为主键
+    public static void createSumByPort(){
+        String sql = "create table sumByPort(controllerId varchar(20), switchId varchar(20), portId varchar(20)," +
+                " sum int, primary key(controllerId, switchId, portId))";
+        DBConnector connector = new DBConnector(sql);
+        try {
+            connector.pst.execute(sql);
+        }catch (Exception e ) {
+            e.printStackTrace();
+        }finally {
+            connector.close();
+        }
+    }
+
+    //根据控制器、交换机、端口号添加流量总量
+    public static void insertSumByPort(String controllerId, String switchId, String portId, Long sum){
+        String sql = "insert into sumByPort values('" + controllerId + "','" + switchId + "','" +
+                portId + "','" + sum + "')";
+        System.out.println(sql);
+        DBConnector connector = new DBConnector(sql);
+        try {
+            connector.pst.execute(sql);
+        }catch (Exception e ) {
+            e.printStackTrace();
+        }finally {
+            connector.close();
+        }
+    }
+
+    //根据控制器、交换机、端口号获取流量总量
+    public static ResultSet selectSumByPort(String controllerId, String switchId,String portId){
+        String sql = "select sum from sumByPort where controllerId = '" + controllerId + "' and switchId = " +
+                "'" + switchId + "' and portId = '" + portId + "'";
+        System.out.println(sql);
+        DBConnector connector = new DBConnector(sql);
+        ResultSet resultSet = null;
+        try {
+            resultSet = connector.pst.executeQuery(sql);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return resultSet;
+    }
+
+    //删除所有表项，保留表的结构（truncate为DDL语言，无法恢复）
+    public static void truncateTable(String tableName){
+        String sql = "truncate table " + tableName;
         DBConnector connector = new DBConnector(sql);
         try {
             connector.pst.execute(sql);

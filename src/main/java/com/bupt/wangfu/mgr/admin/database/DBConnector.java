@@ -6,7 +6,8 @@ package com.bupt.wangfu.mgr.admin.database;
 import java.sql.*;
 
 public class DBConnector {
-    public static final String url = "jdbc:mysql://localhost:3306/odl-info";
+//    public static final String url = "jdbc:mysql://localhost:3306/odl-info";
+    public static final String url = "jdbc:mysql://localhost:3306/test";
     public static final String name = "com.mysql.jdbc.Driver";
     public static final String user = "root";
     public static final String password = "123456";
