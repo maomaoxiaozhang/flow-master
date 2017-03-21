@@ -24,5 +24,6 @@ public class test_caoming {
 //		}
 //		truncateTable("avgSpdByPort");
 //		truncateTable("sumbyport");
+		//
 	}
 }
