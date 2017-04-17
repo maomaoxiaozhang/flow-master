@@ -1,10 +1,12 @@
 package com.bupt.wangfu.test;
 
 import com.bupt.wangfu.info.entry.FlowInfo;
+import com.bupt.wangfu.info.entry.Link;
 import com.bupt.wangfu.info.msg.GroupUnit;
 import com.bupt.wangfu.info.msg.LSA;
 import com.bupt.wangfu.info.msg.PolicyDB;
 import com.bupt.wangfu.info.msg.FlowInfos;
+import com.bupt.wangfu.mgr.admin.database.DataCollect;
 import com.bupt.wangfu.mgr.wsnPolicy.msgs.WsnPolicyMsg;
 
 import java.io.ByteArrayOutputStream;
@@ -18,21 +20,22 @@ import java.util.*;
  */
 public class Start {
     FlowInfos flowInfos = new FlowInfos();
-    //ArrayList<String> user = new ArrayList<String>();
-    Map<String, Long> byteList,packetList,lossList;
-    int times = 0;
-    boolean reset;
-
-
+    Map<String, Info> infoMap;
+    Map<String, User> userMap;
+    Map<String, Link> linkList;
+    int day = 0,month=0,year=0,times=0;
 
     public Start(){
+        SwitchUtil su = new SwitchUtil();
+        su.getDevOfSwitch("http://10.108.165.188:8181",linkList,userMap);
         flowInfos.setControllerId( "http://10.108.165.188:8181");
         Timer tmr = new Timer();
         tmr.scheduleAtFixedRate(new CollectTask(),new Date(),  5000);
+        tmr.scheduleAtFixedRate(new CheckUser(),new Date(),30000);
     }
 
     public static void main(String[] args) {
-        new Start();
+        //new Start();
         GroupUnit gu = new GroupUnit("10.108.164.152",10086,"G1");
         gu.controllerAddr = "http://10.108.165.188:8181";
 
@@ -115,12 +118,36 @@ public class Start {
 
     }
 
+    public class CheckUser extends TimerTask {
+
+        public void run() {
+            DataCollect dc = new DataCollect();
+            ArrayList<String> switchList;
+            Map<String, ArrayList<String>> switchMap;
+            SwitchUtil su = new SwitchUtil();
+            switchList = su.getSwitchList("http://10.108.165.188:8181");
+            switchMap = su.getPortList("http://10.108.165.188:8181",switchList);
+            for(String switchId : switchMap.keySet()){
+                ArrayList<String> ports = switchMap.get(switchId);
+                for(String portId : ports){
+                    String result = dc.checkUser("http://10.108.165.188:8181",switchId,portId);
+                }
+            }
+        }
+
+    }
+
     public void collect(){
-        SimpleDateFormat dataForm =new SimpleDateFormat("dd");
-        String time = dataForm.format(new Date());
-        int day=Integer.parseInt(time);
-        SwitchUtil su = new SwitchUtil();
         ArrayList<FlowInfo> flowInfo = new ArrayList<>();
+        SimpleDateFormat dataForm =new SimpleDateFormat("yyyy-mm-dd");
+        String time = dataForm.format(new Date());
+        String[] ti = time.split("-");
+        int year1=Integer.parseInt(ti[0]);
+        int month1=Integer.parseInt(ti[1]);
+        int day1=Integer.parseInt(ti[2]);
+        SwitchUtil su = new SwitchUtil();
+        Analysis analysis = new Analysis();
+
         ArrayList<String> switchList;
         Map<String, ArrayList<String>> switchMap;
         switchList = su.getSwitchList("http://10.108.165.188:8181");
@@ -129,35 +156,46 @@ public class Start {
             ArrayList<String> ports = switchMap.get(switchId);
             for(String portId : ports){
                 FlowInfo flow = su.getFlowInfo("http://10.108.165.188:8181",switchId,portId);
-                if((day==1)&&(!reset)){
-                    reset = true;
-                    byteList.put(portId,flow.getBytes());
-                }
-                else if(day==2) {
-                    reset = false;
-                }
-                if (packetList.get(portId) == null){
-                    packetList.put(portId,flow.getPackets());
-                    lossList.put(portId,flow.getDrop());
-                    flow.setLossRate((float)0);
-                }
-                else{
-                    if(flow.getPackets()-packetList.get(portId)==0){
-                        packetList.put(portId,flow.getPackets());
-                        lossList.put(portId,flow.getDrop());
-                        flow.setLossRate((float)0);
-                    }
-                    else{
-                        flow.setLossRate((float)(flow.getDrop()-lossList.get(portId)/flow.getPackets()-packetList.get(portId)));
-                        packetList.put(portId,flow.getPackets());
-                        lossList.put(portId,flow.getDrop());
-                    }
-                }
-                flow.setBytes(flow.getBytes()-byteList.get(portId));
                 flowInfo.add(flow);
             }
         }
         times=times+1;
+        if(times==1){
+            if(day != day1){
+                flowInfos.setNewDay(true);
+                day=day1;
+                if(month!=month1){
+                    flowInfos.setNewMonth(true);
+                    month=month1;
+                    for(FlowInfo flow : flowInfo){
+                        infoMap.get(flow.getPortId()).setInBytes(flow.getReceived()+flow.getTransmitted());
+                    }
+                    if(year!=year1){
+                        flowInfos.setNewYear(true);
+                        year=year1;
+                    }
+                }
+            }
+            flowInfos.setDay(day);
+            flowInfos.setMonth(month);
+            flowInfos.setYear(year);
+        }
+        for(FlowInfo flow : flowInfo){
+            flow.setBytes(flow.getBytes()-infoMap.get(flow.getPortId()).getInBytes());
+            long bytes = flow.getReceived()+flow.getTransmitted()-infoMap.get(flow.getPortId()).getBytes();
+            infoMap.get(flow.getPortId()).setBytes(flow.getReceived()+flow.getTransmitted());
+            flow.setAvgSpeed((float)(bytes/5));
+            long packet = flow.getPackets()-infoMap.get(flow.getPortId()).getPackets();
+            long drop =flow.getDrop()-infoMap.get(flow.getPortId()).getDrop();
+            infoMap.get(flow.getPortId()).setPackets(flow.getPackets());
+            infoMap.get(flow.getPortId()).setDrop(flow.getDrop());
+            flow.setLossRate((float)(drop/packet));
+            if(userMap.get(flow.getPortId()) != null){
+                String result1 = analysis.limitAnalysis(userMap.get(flow.getPortId()).getBytesLimit(),flow.getBytes());
+                String result2 = analysis.lossRateAnalysis(userMap.get(flow.getPortId()).getLossRate(),flow.getLossRate());
+                String result3 = analysis.threshold(userMap.get(flow.getPortId()).getThreshold(),flow.getSpeed());
+            }
+        }
         flowInfos.getFlowMap().put(times,flowInfo);
         if(times==120){
             try {
@@ -178,4 +216,5 @@ public class Start {
             flowInfos.getFlowMap().clear();
         }
     }
+
 }

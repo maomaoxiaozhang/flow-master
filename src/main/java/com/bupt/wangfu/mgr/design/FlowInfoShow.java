@@ -1,8 +1,6 @@
 package com.bupt.wangfu.mgr.design;
 
-import org.jfree.chart.ChartFactory;
-import org.jfree.chart.ChartPanel;
-import org.jfree.chart.JFreeChart;
+import org.jfree.chart.*;
 import org.jfree.chart.axis.CategoryAxis;
 import org.jfree.chart.axis.CategoryLabelPositions;
 import org.jfree.chart.axis.NumberAxis;
@@ -11,9 +9,7 @@ import org.jfree.chart.plot.CategoryPlot;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.renderer.category.BarRenderer;
 import org.jfree.chart.title.TextTitle;
-import org.jfree.data.category.CategoryDataset;
-import org.jfree.data.category.DefaultCategoryDataset;
-import org.jfree.data.category.SlidingCategoryDataset;
+import org.jfree.data.category.*;
 
 import javax.swing.*;
 import javax.swing.event.ChangeEvent;
@@ -22,17 +18,16 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 
-
 /**
  * @ Created by HanB on 2016/10/10 0010.
  */
 public class FlowInfoShow {
+
     private String title; // 图标题  
     private String verticallyTitle;// 纵向坐标显示名称  
     private String horizontalTitle;// 横向坐标显示名称  
     private List<String> elem = new ArrayList<>();// 内容初始值 （每个类型显示文字）
     private List<Double> value = new ArrayList<>();// 内容初始值  (每个类型显示精度)
-
     private class PanelByHistogram extends JPanel implements ChangeListener {
 
         private JScrollBar scroller = null;
@@ -97,9 +92,11 @@ public class FlowInfoShow {
         }
 
         private PanelByHistogram() throws Exception {
+            setLayout(null);
             dataset = new SlidingCategoryDataset(createDataset(), 0, elem.size());
             JFreeChart jfreechart = createChart(dataset);
             ChartPanel chartpanel = new ChartPanel(jfreechart);
+            chartpanel.setBounds(0,0,400,500);
             add(chartpanel);
         }
     }
@@ -118,12 +115,13 @@ public class FlowInfoShow {
         return new PanelByHistogram();
     }
 
+
     public static void main(String[] args) {
         FlowInfoShow FlowInfoShow = new FlowInfoShow();// 柱状图的panel
         FlowInfoShow.setTitle("柱状图");
         FlowInfoShow.setHorizontalTitle("序号");
         FlowInfoShow.setVerticallyTitle("数据量");
-        
+
         ArrayList<String> elem = new ArrayList<>();
         ArrayList<Double> value = new ArrayList<>();
         for (int i = 0; i < 10; i ++) {

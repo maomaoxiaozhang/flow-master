@@ -214,7 +214,7 @@ public class GlobalUtil {
 				for (int i = 0; i < jqueue.length(); i++) {
 					JSONObject jq = jqueue.getJSONObject(i);
 					Queue q = new Queue();
-					String queueId = Integer.toString(jq.getInt("queue-id"));
+					String queueId = Integer.toString(jq.getInt(")queue-id"));
 					String dequeue = Long.toString(jq.getJSONObject("opendaylight-queue-statistics:flow-capable-node-connector-queue-statistics")
 							.getLong("transmitted-bytes"));
 					q.setQueueName("queue:" + queueId);

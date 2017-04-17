@@ -245,106 +245,6 @@ public class DataCollect {
         }
     }
 
-    //创建表avgSpdByPort，表项为次数、控制器、交换机、端口号、速率；主键为次数、控制器、交换机、端口号
-    public static void createAvgSpdByPort(){
-        String sql = "create table avgSpdByPort(times int, controllerId varchar(20), switchId varchar(20), " +
-                "portId varchar(20), speed int, primary key(times, controllerId, switchId, portId))";
-        DBConnector connector = new DBConnector(sql);
-        try {
-            connector.pst.execute(sql);
-        }catch (Exception e ) {
-            e.printStackTrace();
-        }finally {
-            connector.close();
-        }
-    }
-
-    //根据次数、控制器、交换机、端口号存储某一时间内的平均速率
-    public static void insertAvgSpdByPort(int times, String controllerId, String switchId, String portId, Long speed){
-        String sql = "insert into avgSpdByPort values('" + times + "','" + controllerId + "','" + switchId + "','" +
-                portId + "','" + speed + "')";
-        DBConnector connector = new DBConnector(sql);
-        try {
-            connector.pst.execute(sql);
-        }catch (Exception e ) {
-            e.printStackTrace();
-        }finally {
-            connector.close();
-        }
-    }
-
-    //从avgSpdByPort表中根据次数、控制器、交换机、端口号取出某一时间段的平均速率
-    public static ResultSet selectAvgSpdByPort(int times, String controllerId, String switchId, String portId){
-        String sql = "select speed from avgSpdByPort where times = " + times + " and controllerId = " + "'" +
-                controllerId + "'" + " and switchId = " + "'"+ switchId + "'" + " and portId = " + "'" + portId + "'";
-//        System.out.println(sql);
-        DBConnector connector = new DBConnector(sql);
-        ResultSet resultSet = null;
-        try {
-            resultSet = connector.pst.executeQuery(sql);
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return resultSet;
-    }
-
-    //创建表sumByPort（本表在每次刷新时需要重置），表项为控制器、交换机、端口号、流量总量，将控制器、交换机、端口号设置为主键
-    public static void createSumByPort(){
-        String sql = "create table sumByPort(controllerId varchar(20), switchId varchar(20), portId varchar(20)," +
-                " sum int, primary key(controllerId, switchId, portId))";
-        DBConnector connector = new DBConnector(sql);
-        try {
-            connector.pst.execute(sql);
-        }catch (Exception e ) {
-            e.printStackTrace();
-        }finally {
-            connector.close();
-        }
-    }
-
-    //根据控制器、交换机、端口号添加流量总量
-    public static void insertSumByPort(String controllerId, String switchId, String portId, Long sum){
-        String sql = "insert into sumByPort values('" + controllerId + "','" + switchId + "','" +
-                portId + "','" + sum + "')";
-        System.out.println(sql);
-        DBConnector connector = new DBConnector(sql);
-        try {
-            connector.pst.execute(sql);
-        }catch (Exception e ) {
-            e.printStackTrace();
-        }finally {
-            connector.close();
-        }
-    }
-
-    //根据控制器、交换机、端口号获取流量总量
-    public static ResultSet selectSumByPort(String controllerId, String switchId,String portId){
-        String sql = "select sum from sumByPort where controllerId = '" + controllerId + "' and switchId = " +
-                "'" + switchId + "' and portId = '" + portId + "'";
-        System.out.println(sql);
-        DBConnector connector = new DBConnector(sql);
-        ResultSet resultSet = null;
-        try {
-            resultSet = connector.pst.executeQuery(sql);
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return resultSet;
-    }
-
-    //删除所有表项，保留表的结构（truncate为DDL语言，无法恢复）
-    public static void truncateTable(String tableName){
-        String sql = "truncate table " + tableName;
-        DBConnector connector = new DBConnector(sql);
-        try {
-            connector.pst.execute(sql);
-        }catch (Exception e ) {
-            e.printStackTrace();
-        }finally {
-            connector.close();
-        }
-    }
-
 
     public static ResultSet selectMonth() {
 
@@ -359,9 +259,9 @@ public class DataCollect {
         return resultSet;
     }
 
-    public static void  updateMonth(String controller,int day) {
+    public static void  updateMonth(String controller) {
         DBConnector connector;
-        String sql1 = "select distinct controller,switchId,node from `odl-info`.`day` where controller = '"+controller+"'";
+        String sql1 = "select distinct controller,switchId,node,days from `odl-info`.`day` where controller = '"+controller+"'";
         String switchId=null; String node=null;
         int received=0,transmitted=0,bytes=0,i;
         float lossRate=0,speed=0;
@@ -389,7 +289,7 @@ public class DataCollect {
                 }
                 speed=speed/i;
                 lossRate=lossRate/i;
-                String sql3 = "insert into `odl-info`.month (day, controller, switchId, node, received, transmitted, bytes, speed, lossRate) values ( '" +day +"', '"+ controller +"', '"+switchId+"', '"+node+"', '"+received+"', '"+transmitted+"', '"+bytes+"', '"+speed+"', '"+lossRate+"')";
+                String sql3 = "insert into `odl-info`.month (dates, controller, switchId, node, received, transmitted, bytes, speed, lossRate) values ( '" +resultSet1.getString("days") +"', '"+ controller +"', '"+switchId+"', '"+node+"', '"+received+"', '"+transmitted+"', '"+bytes+"', '"+speed+"', '"+lossRate+"')";
                 connector= new DBConnector(sql3);
                 connector.pst.execute(sql3);
             }
@@ -534,11 +434,26 @@ public class DataCollect {
         }
     }
 
+    public static String checkUser(String cUrl, String sId, String portId) {
+        String result = "normal";
+        String sql = "select * from 'odl-user' WHERE controller = '" + cUrl + "' switch = "+ sId  +"and port='"+portId+"'";
+        DBConnector connector = new DBConnector(sql);
+        ResultSet resultSet = null;
+        try {
+            resultSet = connector.pst.executeQuery(sql);
+            if(!resultSet.next()) result = "unavailableUser";
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+
+
 
 
     public static void main(String[] args) {
-        updateMonth("1",1);
-        deleteDay("1");
+        //updateMonth("1",1);
+        //deleteDay("1");
 
         //FlowInfo[] flowInfos = new FlowInfo[15];
         //for (int i = 0; i < flowInfos.length; i ++) {

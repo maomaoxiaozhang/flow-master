@@ -1,16 +1,11 @@
 package com.bupt.wangfu.info.entry;
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
-
 /**
  * @ Created by TangLu on 2016/10/11 0011.
  */
 public class FlowInfo {
     private String controllerId,switchId,portId;
-    private Long transmitted,received,bytes,speed,packets,drop;
-    private Float lossRate;
+    private Long transmitted,received,bytes,maxSpeed,speed,packets,drop;
+    private Float lossRate,avgSpeed;
 
     public Long getDrop() {
         return drop;
@@ -18,6 +13,14 @@ public class FlowInfo {
 
     public void setDrop(Long drop) {
         this.drop = drop;
+    }
+
+    public float getAvgSpeed() {
+        return avgSpeed;
+    }
+
+    public void setAvgSpeed(float avgSpeed) {
+        this.avgSpeed = avgSpeed;
     }
 
     public Long getPackets() {
@@ -66,6 +69,14 @@ public class FlowInfo {
 
     public void setSpeed(Long speed) {
         this.speed = speed;
+    }
+
+    public Long getMaxSpeed() {
+        return maxSpeed;
+    }
+
+    public void setMaxSpeed(Long maxSpeed) {
+        this.maxSpeed = maxSpeed;
     }
 
     public Float getLossRate() {

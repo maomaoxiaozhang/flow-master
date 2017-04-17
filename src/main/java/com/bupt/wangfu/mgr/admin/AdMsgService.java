@@ -89,7 +89,7 @@ public class AdMsgService extends AdminUtil implements Runnable {
 		else if (msg instanceof FlowInfos){
 			FlowInfos flowInfos = (FlowInfos) msg;
 			Import imt =  new Import();
-			imt.collect(admr.times,flowInfos);
+			imt.collect(flowInfos);
 		}
 	}
 }
